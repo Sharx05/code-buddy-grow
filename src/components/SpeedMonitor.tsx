@@ -66,7 +66,7 @@ const SpeedMonitor = () => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
-  const checkInterval = 30 * 1000; // 30 seconds
+  const checkInterval = 20 * 1000; // 30 seconds
   const imageURL = 'https://placehold.co/1000x1000/000000/FFFFFF?text=Test-File';
   const imageSizeInBytes = 1000 * 1000;
 
