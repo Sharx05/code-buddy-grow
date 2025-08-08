@@ -88,10 +88,21 @@ const SpeedMonitor = () => {
 
     if (tier.audioSrc) {
       const audio = new Audio(tier.audioSrc);
-      audio.play().catch(error => {
-        console.error("Error playing audio:", error);
-        setLastComment("Could not play audio. Please click the page and try again.");
+      
+      // Handle audio loading errors gracefully
+      audio.addEventListener('error', (e) => {
+        console.warn(`Audio file ${tier.audioSrc} could not be loaded. Please add valid MP3 files to the public/sounds/ folder.`);
       });
+      
+      // Only attempt to play if the audio loads successfully
+      audio.addEventListener('canplaythrough', () => {
+        audio.play().catch(err => {
+          console.warn('Audio playback failed:', err.message);
+        });
+      });
+      
+      // Load the audio file
+      audio.load();
     }
   };
 
