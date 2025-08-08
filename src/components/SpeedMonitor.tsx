@@ -62,13 +62,19 @@ const SpeedMonitor = () => {
   const [timeLeft, setTimeLeft] = useState(30);
   const [isLoading, setIsLoading] = useState(false);
   const [currentIcon, setCurrentIcon] = useState("🌐");
+  const [speedHistory, setSpeedHistory] = useState<number[]>([]);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   const checkInterval = 30 * 1000; // 30 seconds
-  const imageURL = 'https://placehold.co/1000x1000/000000/FFFFFF?text=Test-File';
-  const imageSizeInBytes = 1000 * 1000;
+
+  // FIXED: Use multiple test files for better accuracy
+  const testFiles = [
+    { url: 'https://httpbin.org/bytes/500000', size: 500000 }, // 500KB
+    { url: 'https://httpbin.org/bytes/1000000', size: 1000000 }, // 1MB
+    { url: 'https://httpbin.org/bytes/2000000', size: 2000000 }, // 2MB
+  ];
 
   const findTierForSpeed = (speedMbps: number): SpeedTier | null => {
     return speedTiers.find(tier => speedMbps >= tier.minSpeed && speedMbps < tier.maxSpeed) || null;
@@ -88,12 +94,9 @@ const SpeedMonitor = () => {
 
     if (tier.audioSrc) {
       const audio = new Audio(tier.audioSrc);
-      
-      // Set volume and preload
       audio.volume = 0.7;
       audio.preload = 'auto';
       
-      // Try to play the audio directly
       audio.play().catch(err => {
         console.warn(`Audio playback failed for ${tier.audioSrc}:`, err.message);
         console.warn('Please ensure you have valid MP3 files in the public/sounds/ folder');
@@ -101,41 +104,75 @@ const SpeedMonitor = () => {
     }
   };
 
+  // FIXED: More accurate speed measurement with multiple tests
+  const measureSingleSpeed = async (testFile: { url: string; size: number }): Promise<number> => {
+    const cacheBuster = `?t=${Date.now()}&r=${Math.random()}`;
+    const url = `${testFile.url}${cacheBuster}`;
+    
+    // FIXED: Use performance.now() for more accurate timing
+    const startTime = performance.now();
+    
+    const response = await fetch(url, { 
+      cache: 'no-store',
+      method: 'GET'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    // Read the response completely
+    await response.blob();
+    const endTime = performance.now();
+    
+    const durationInSeconds = (endTime - startTime) / 1000;
+    
+    // FIXED: Prevent division by very small numbers
+    if (durationInSeconds < 0.01) {
+      return 1000; // Return a high speed if too fast to measure
+    }
+    
+    // Calculate speed in bits per second, then convert to Mbps
+    const speedBps = (testFile.size * 8) / durationInSeconds;
+    return speedBps / 1_000_000; // Convert to Mbps
+  };
+
+  // FIXED: Average multiple measurements for accuracy
   const measureSpeed = async () => {
     try {
       setIsLoading(true);
-      const startTime = new Date().getTime();
+      const speeds: number[] = [];
       
-      // FIX: Added 'no-store' cache option for more reliable measurements
-      const response = await fetch(imageURL + '&t=' + startTime, { cache: 'no-store' });
-      
-      // FIX 1: Get the ACTUAL file size from the response headers
-      const actualSizeInBytes = Number(response.headers.get('Content-Length'));
-
-      if (!actualSizeInBytes) {
-        console.error("Could not get Content-Length. Cannot measure speed accurately.");
-        updateUI(0); // Show an error state
-        return;
-      }
-
-      await response.blob();
-      const endTime = new Date().getTime();
-      
-      const durationInSeconds = (endTime - startTime) / 1000;
-
-      if (durationInSeconds < 0.1) {
-        console.warn("Download was too fast to measure accurately. Assuming very high speed.");
-        updateUI(500); // Or another high-speed indicator
-        return;
+      // Run tests with different file sizes
+      for (const testFile of testFiles) {
+        try {
+          const speed = await measureSingleSpeed(testFile);
+          speeds.push(speed);
+        } catch (error) {
+          console.warn(`Test failed for ${testFile.url}:`, error);
+          // Continue with other tests
+        }
       }
       
-      // Use the actual size for the calculation
-      const speedBps = (actualSizeInBytes * 8) / durationInSeconds;
+      if (speeds.length === 0) {
+        throw new Error('All speed tests failed');
+      }
       
-      // FIX 2: Convert to Mbps using the correct base (1,000,000)
-      const speedMbps = Number((speedBps / 1_000_000).toFixed(2));
+      // FIXED: Calculate median instead of average to reduce outlier impact
+      speeds.sort((a, b) => a - b);
+      const medianSpeed = speeds.length % 2 === 0 
+        ? (speeds[speeds.length / 2 - 1] + speeds[speeds.length / 2]) / 2
+        : speeds[Math.floor(speeds.length / 2)];
       
-      updateUI(speedMbps);
+      const finalSpeed = Number(medianSpeed.toFixed(2));
+      
+      // FIXED: Keep speed history for better accuracy over time
+      setSpeedHistory(prev => {
+        const newHistory = [...prev, finalSpeed].slice(-10); // Keep last 10 measurements
+        return newHistory;
+      });
+      
+      updateUI(finalSpeed);
 
     } catch (error) {
       console.error("Error measuring speed:", error);
@@ -146,6 +183,53 @@ const SpeedMonitor = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // FIXED: Alternative method using XMLHttpRequest for better control
+  const measureSpeedXHR = async (): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const testUrl = `https://httpbin.org/bytes/1000000?t=${Date.now()}`;
+      const fileSize = 1000000; // 1MB
+      
+      let startTime: number;
+      let bytesLoaded = 0;
+      
+      xhr.open('GET', testUrl, true);
+      xhr.responseType = 'blob';
+      
+      xhr.onloadstart = () => {
+        startTime = performance.now();
+      };
+      
+      xhr.onprogress = (event) => {
+        if (event.lengthComputable) {
+          bytesLoaded = event.loaded;
+        }
+      };
+      
+      xhr.onload = () => {
+        const endTime = performance.now();
+        const duration = (endTime - startTime) / 1000;
+        
+        if (duration < 0.01) {
+          resolve(1000); // Very fast connection
+          return;
+        }
+        
+        const actualSize = xhr.response?.size || fileSize;
+        const speedBps = (actualSize * 8) / duration;
+        const speedMbps = speedBps / 1_000_000;
+        
+        resolve(Number(speedMbps.toFixed(2)));
+      };
+      
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.ontimeout = () => reject(new Error('Request timeout'));
+      
+      xhr.timeout = 10000; // 10 second timeout
+      xhr.send();
+    });
   };
 
   const updateUI = (speedMbps: number) => {
@@ -170,6 +254,7 @@ const SpeedMonitor = () => {
     setIsMonitoring(true);
     setLastComment("Starting speed check...");
     setCurrentIcon("🔄");
+    setSpeedHistory([]); // Reset history
     measureSpeed();
     intervalRef.current = setInterval(measureSpeed, checkInterval);
     startCountdown();
@@ -204,6 +289,13 @@ const SpeedMonitor = () => {
     if (speed === null) return "text-muted-foreground";
     const tier = findTierForSpeed(speed);
     return tier?.color || "text-muted-foreground";
+  };
+
+  // FIXED: Calculate average speed from history for display
+  const getAverageSpeed = () => {
+    if (speedHistory.length === 0) return currentSpeed;
+    const sum = speedHistory.reduce((a, b) => a + b, 0);
+    return Number((sum / speedHistory.length).toFixed(2));
   };
 
   return (
@@ -263,7 +355,7 @@ const SpeedMonitor = () => {
               <Card className="bg-gradient-to-r from-muted/20 to-muted/10 p-8 border-border/30">
                 <div className="space-y-4">
                   <p className="text-muted-foreground text-sm uppercase tracking-widest">
-                    Last Measured Speed
+                    Current Speed
                   </p>
                   <div className="flex items-baseline justify-center">
                     <span className={`text-6xl font-bold transition-smooth ${getSpeedColor(currentSpeed)}`}>
@@ -277,6 +369,12 @@ const SpeedMonitor = () => {
                     </span>
                     <span className="text-2xl text-muted-foreground ml-2">Mbps</span>
                   </div>
+                  {/* FIXED: Show average speed from history */}
+                  {speedHistory.length > 1 && (
+                    <p className="text-sm text-muted-foreground">
+                      Average: {getAverageSpeed()} Mbps ({speedHistory.length} tests)
+                    </p>
+                  )}
                 </div>
               </Card>
 
