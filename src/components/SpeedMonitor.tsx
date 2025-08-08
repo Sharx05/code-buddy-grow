@@ -15,38 +15,38 @@ interface SpeedTier {
 const speedTiers: SpeedTier[] = [
   {
     minSpeed: 0,
-    maxSpeed: 1,
+    maxSpeed: 3,
     comment: "Are you serious right now?",
     audioSrc: "/sounds/error.mp3",
     color: "text-destructive",
     icon: "💀"
   },
   {
-    minSpeed: 1,
-    maxSpeed: 2,
+    minSpeed: 3,
+    maxSpeed: 5,
     comment: "My grandma's dial-up was faster.",
     audioSrc: "/sounds/slow.mp3",
     color: "text-destructive",
     icon: "😴"
   },
   {
-    minSpeed: 2,
-    maxSpeed: 5,
+    minSpeed: 5,
+    maxSpeed: 10,
     comment: "It's... acceptable.",
     audioSrc: "/sounds/okay.mp3",
     color: "text-warning",
     icon: "😐"
   },
   {
-    minSpeed: 5,
-    maxSpeed: 20,
+    minSpeed: 10,
+    maxSpeed: 15,
     comment: "Okay, now we're talking!",
     audioSrc: "/sounds/good.mp3",
     color: "text-success",
     icon: "😊"
   },
   {
-    minSpeed: 20,
+    minSpeed: 15,
     maxSpeed: Infinity,
     comment: "UNLIMITED POWER!",
     audioSrc: "/sounds/unlimited.mp3",
