@@ -105,7 +105,19 @@ const SpeedMonitor = () => {
     try {
       setIsLoading(true);
       const startTime = new Date().getTime();
-      const response = await fetch(imageURL + '&t=' + startTime);
+      
+      // FIX: Added 'no-store' cache option for more reliable measurements
+      const response = await fetch(imageURL + '&t=' + startTime, { cache: 'no-store' });
+      
+      // FIX 1: Get the ACTUAL file size from the response headers
+      const actualSizeInBytes = Number(response.headers.get('Content-Length'));
+
+      if (!actualSizeInBytes) {
+        console.error("Could not get Content-Length. Cannot measure speed accurately.");
+        updateUI(0); // Show an error state
+        return;
+      }
+
       await response.blob();
       const endTime = new Date().getTime();
       
@@ -113,12 +125,16 @@ const SpeedMonitor = () => {
 
       if (durationInSeconds < 0.1) {
         console.warn("Download was too fast to measure accurately. Assuming very high speed.");
-        updateUI(500);
+        updateUI(500); // Or another high-speed indicator
         return;
       }
       
-      const speedBps = (imageSizeInBytes * 8) / durationInSeconds;
-      const speedMbps = Number((speedBps / (1024 * 1024)).toFixed(2));
+      // Use the actual size for the calculation
+      const speedBps = (actualSizeInBytes * 8) / durationInSeconds;
+      
+      // FIX 2: Convert to Mbps using the correct base (1,000,000)
+      const speedMbps = Number((speedBps / 1_000_000).toFixed(2));
+      
       updateUI(speedMbps);
 
     } catch (error) {
