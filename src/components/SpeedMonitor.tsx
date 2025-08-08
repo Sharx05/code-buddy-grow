@@ -17,7 +17,7 @@ const speedTiers: SpeedTier[] = [
     minSpeed: 0,
     maxSpeed: 1,
     comment: "Are you serious right now?",
-    audioSrc: "https://www.myinstants.com/media/sounds/dial-up-modem.mp3",
+    audioSrc: "/sounds/error.mp3",
     color: "text-destructive",
     icon: "💀"
   },
@@ -25,7 +25,7 @@ const speedTiers: SpeedTier[] = [
     minSpeed: 1,
     maxSpeed: 2,
     comment: "My grandma's dial-up was faster.",
-    audioSrc: "https://www.myinstants.com/media/sounds/sad-trombone.mp3",
+    audioSrc: "/sounds/slow.mp3",
     color: "text-destructive",
     icon: "😴"
   },
@@ -33,7 +33,7 @@ const speedTiers: SpeedTier[] = [
     minSpeed: 2,
     maxSpeed: 5,
     comment: "It's... acceptable.",
-    audioSrc: "https://www.myinstants.com/media/sounds/wow_9.mp3",
+    audioSrc: "/sounds/okay.mp3",
     color: "text-warning",
     icon: "😐"
   },
@@ -41,7 +41,7 @@ const speedTiers: SpeedTier[] = [
     minSpeed: 5,
     maxSpeed: 20,
     comment: "Okay, now we're talking!",
-    audioSrc: "https://www.myinstants.com/media/sounds/nice-shot.mp3",
+    audioSrc: "/sounds/good.mp3",
     color: "text-success",
     icon: "😊"
   },
@@ -49,7 +49,7 @@ const speedTiers: SpeedTier[] = [
     minSpeed: 20,
     maxSpeed: Infinity,
     comment: "UNLIMITED POWER!",
-    audioSrc: "https://www.myinstants.com/media/sounds/holy-moly-vine-sound-effect.mp3",
+    audioSrc: "/sounds/unlimited.mp3",
     color: "text-primary",
     icon: "🚀"
   }
